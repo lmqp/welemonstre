@@ -37,6 +37,8 @@
   --light-bottom:rgba(255,255,255,.035);
   --nav-bg:rgba(5,5,5,.92);
   --nav-bg0:rgba(5,5,5,0);
+  --bar-bg:rgba(8,8,8,.94);
+  --bar-shadow:0 12px 32px -12px rgba(0,0,0,.85);
   --grain-op:.085;
   --cta-glow:0 0 22px rgba(255,255,255,.18),0 0 60px rgba(255,255,255,.08);
   --cta-glow-h:0 0 28px rgba(255,255,255,.32),0 0 80px rgba(255,255,255,.14);
@@ -57,6 +59,8 @@
   --light-bottom:rgba(255,255,255,.5);
   --nav-bg:rgba(243,243,241,.94);
   --nav-bg0:rgba(243,243,241,0);
+  --bar-bg:rgba(243,243,241,.94);
+  --bar-shadow:0 10px 28px -14px rgba(18,18,17,.28);
   --grain-op:.06;
   --cta-glow:0 8px 24px rgba(18,18,17,.18);
   --cta-glow-h:0 12px 32px rgba(18,18,17,.26);
@@ -76,10 +80,11 @@ button{font:inherit;color:inherit}
 :focus-visible{outline:1px solid var(--fg);outline-offset:6px;border-radius:10px}
 
 /* Barre du haut */
-.nav{position:fixed;top:0;left:0;right:0;z-index:20;display:flex;justify-content:center;gap:32px;padding:22px 20px 30px;font-size:14px;color:var(--mute);background:linear-gradient(180deg,var(--nav-bg) 45%,var(--nav-bg0))}
+.topbar{position:fixed;top:0;left:0;right:0;height:68px;z-index:19;pointer-events:none;background:var(--bar-bg);-webkit-backdrop-filter:blur(24px) saturate(1.4);backdrop-filter:blur(24px) saturate(1.4);border-bottom:1px solid var(--line);box-shadow:var(--bar-shadow);transition:background-color .3s}
+.nav{position:fixed;top:0;left:0;right:0;z-index:20;display:flex;justify-content:center;align-items:center;gap:32px;height:68px;padding:0 20px;font-size:14px;color:var(--mute)}
 .nav a{transition:color .2s}
 .nav a:hover,.nav a[aria-current="page"]{color:var(--fg)}
-.theme{position:fixed;top:14px;right:18px;z-index:21;width:40px;height:40px;display:grid;place-items:center;border:1px solid var(--line);border-radius:50%;background:transparent;color:var(--mute);cursor:pointer;transition:color .2s,border-color .2s}
+.theme{position:fixed;top:14px;right:18px;background:var(--bar-bg)!important;z-index:21;width:40px;height:40px;display:grid;place-items:center;border:1px solid var(--line);border-radius:50%;background:transparent;color:var(--mute);cursor:pointer;transition:color .2s,border-color .2s}
 .theme:hover{color:var(--fg);border-color:var(--fg)}
 .theme svg{width:18px;height:18px}
 .theme .sun{display:none}
@@ -257,7 +262,8 @@ select.field option{background:var(--bg);color:var(--fg)}
 @media (max-width:600px){
   .nav{gap:16px;justify-content:flex-start;right:62px;padding-left:20px;padding-right:20px;font-size:13px;overflow-x:auto;white-space:nowrap;scrollbar-width:none;-webkit-mask-image:linear-gradient(90deg,#000 85%,transparent);mask-image:linear-gradient(90deg,#000 85%,transparent)}
   .nav::-webkit-scrollbar{display:none}
-  .theme{top:12px;right:12px}
+  .topbar,.nav{height:62px}
+  .theme{top:11px;right:12px}
   .reel a{width:72vw}
   .thumbs{grid-template-columns:1fr}
   .chans{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -269,6 +275,7 @@ select.field option{background:var(--bg);color:var(--fg)}
 </style>
 </head>
 <body>
+<div class="topbar" aria-hidden="true"></div>
 <nav class="nav" aria-label="Rubriques">
   <a href="#accueil">Accueil</a>
   <a href="#montages">Montages</a>
@@ -703,14 +710,20 @@ function runMorph(ox, oy) {
 
   const draw = (t) => {
     g.clearRect(0, 0, W, H);
+    /* sortie : un simple fondu uni, sans carrés */
+    if (t >= IN + HOLD) {
+      const k = Math.min(1, (t - IN - HOLD) / OUT), e = 1 - (1 - k) * (1 - k) * (1 - k);
+      if (k < 1) { g.globalAlpha = 1 - e; g.fillStyle = bg; g.fillRect(0, 0, W, H); g.globalAlpha = 1; }
+      return;
+    }
     for (let i = 0; i < N; i++) {
-      let a;
-      if (t < IN + HOLD) { const s = tin[i] * (IN - FADE); a = Math.max(0, Math.min(1, (t - s) / FADE)); }
+      let a; const entering = t < IN + HOLD;
+      if (entering) { const s = tin[i] * (IN - FADE); a = Math.max(0, Math.min(1, (t - s) / FADE)); }
       else { const s = IN + HOLD + tout[i] * (OUT - FADE); a = 1 - Math.max(0, Math.min(1, (t - s) / FADE)); }
       if (a <= 0) continue;
       const x = (i % cols) * S, y = Math.floor(i / cols) * S;
       g.globalAlpha = a; g.fillStyle = bg; g.fillRect(x, y, S, S);
-      if (a < 1) { g.globalAlpha = (1 - a) * 0.22; g.fillStyle = fg; g.fillRect(x + 1, y + 1, S - 2, S - 2); }
+      if (entering && a < 1) { g.globalAlpha = (1 - a) * 0.22; g.fillStyle = fg; g.fillRect(x + 1, y + 1, S - 2, S - 2); }
     }
     g.globalAlpha = 1;
   };
